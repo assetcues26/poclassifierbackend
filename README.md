@@ -34,6 +34,19 @@ API base: http://localhost:8000
 
 Swagger `/docs` is disabled (API is private).
 
+## Tests
+
+Unit tests use pytest. Azure HTTP calls are mocked with `respx` — nothing hits the real classifier.
+
+```powershell
+cd PO_classifcationUI\backend
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+pytest
+```
+
+`pytest.ini` sets `asyncio_mode = auto` so async tests run without extra markers. Tests write job files under a temporary folder (not `jobs/`).
+
 ## Auth
 
 Only `POST /api/login` and `POST /api/logout` are public. Every other route requires a valid session cookie.
