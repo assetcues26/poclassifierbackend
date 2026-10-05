@@ -81,9 +81,14 @@ Restart uvicorn after changing auth env vars.
 | Environment | `COOKIE_SAMESITE` | `COOKIE_SECURE` |
 |---|---|---|
 | Local (HTTP) | `lax` | `false` |
-| Render + Vercel (HTTPS, different domains) | `none` | `true` |
+| Production (Vercel proxies `/api` → Render) | `lax` | `true` |
 
-Also set `CORS_ORIGINS` to your frontend origin(s), e.g. `http://localhost:5173` locally or `https://your-app.vercel.app` in production.
+Also set `CORS_ORIGINS` to your frontend origin(s), e.g. `http://localhost:5173`
+locally or `https://poclassifier.vercel.app` in production (no trailing slash).
+
+With the Vercel rewrite, the browser talks only to the Vercel origin, so cookies
+are first-party (`lax` is enough). Use `none` + `true` only if the browser calls
+Render directly (no proxy).
 
 **Local tip:** use `localhost` for both the UI and `VITE_API_BASE_URL` (do not mix `localhost` and `127.0.0.1`), or session cookies will not be sent and uploads will return 401.
 
