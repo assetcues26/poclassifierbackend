@@ -100,6 +100,8 @@ Render directly (no proxy).
 | `AZURE_FUNCTION_KEY` | Optional function key |
 | `BATCH_SIZE` | POs per Azure request (default 5) |
 | `MAX_EXCEL_PO_ROWS` | Max PO data rows per upload |
+| `OVERRIDE_LOCATIONCODE` / company overrides | Hardcoded ERP field overrides |
+| `OVERRIDE_CUSTOMERID` | Fallback customerid for classify-po (ERP wins when usable) |
 | `JOBS_DIR` | Disk folder for job state |
 | `CORS_ORIGINS` | Allowed frontend origins (comma-separated) |
 | `APP_USERS` | `username:bcrypt_hash` (comma-separated if multiple) |
@@ -115,7 +117,8 @@ See `.env.example` for the full template.
 1. Web service: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
 2. Single worker (`--workers 1`)
 3. Persistent disk mounted at `JOBS_DIR` for long runs
-4. Set all secrets in the Render dashboard (`APP_USERS`, `SESSION_SECRET`, Azure URL/key, cookie flags, `CORS_ORIGINS`)
+4. Set all secrets in the Render dashboard (`APP_USERS`, `SESSION_SECRET`, Azure URL/key,
+   cookie flags, `CORS_ORIGINS`, and `OVERRIDE_CUSTOMERID` if Excel rows often lack customerid)
 
 ## Security
 

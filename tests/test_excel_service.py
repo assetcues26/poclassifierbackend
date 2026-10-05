@@ -8,7 +8,12 @@ from pathlib import Path
 import pytest
 from openpyxl import Workbook
 
-from app.excel_service import apply_overrides, build_azure_payload, parse_excel
+from app.excel_service import (
+    apply_overrides,
+    build_azure_payload,
+    parse_excel,
+    usable_customerid,
+)
 
 
 def _write_excel(path: Path, rows: list[tuple]) -> None:
@@ -72,16 +77,43 @@ def test_apply_overrides(settings):
     assert erp["companycode"] == settings.override_companycode
 
 
-def test_build_azure_payload(settings):
-    records = [
-        {
-            "synthetic_id": 7,
-            "po_number": "PO-7",
-            "erp": _valid_erp("PO-7"),
-        }
-    ]
-    payload = build_azure_payload(records)
-    assert "Data" in payload
+def test_usable_customerid():
+    assert usable_customerid(42) == 42
+    assert usable_customerid("42") == 42
+    assert usable_customerid(" 7 ") == 7
+    assert usable_customerid(0) is None
+    assert usable_customerid("0") is None
+    assert usable_customerid(None) is None
+    assert usable_customerid("") is None
+    assert usable_customerid("ABC") is None
+    assert usable_customerid(True) is None
+
+
+def test_build_azure_payload_uses_erp_customerid(settings, monkeypatch):
+    monkeypatch.setattr(settings, "override_customerid", 1063)
+    erp = _valid_erp("PO-7")
+    erp["customerid"] = 42
+    records = [{"synthetic_id": 7, "po_number": "PO-7", "erp": erp}]
+    payload = build_azure_payload(records, settings)
     assert payload["Data"][0]["purchaseorderid"] == 7
     assert payload["Data"][0]["purchaseordernumber"] == "PO-7"
+    assert payload["Data"][0]["customerid"] == 42
     assert payload["Data"][0]["lines"][0]["polineid"] == 1
+
+
+def test_build_azure_payload_falls_back_to_override(settings, monkeypatch):
+    monkeypatch.setattr(settings, "override_customerid", 1063)
+    records = [
+        {"synthetic_id": 7, "po_number": "PO-7", "erp": _valid_erp("PO-7")},
+    ]
+    payload = build_azure_payload(records, settings)
+    assert payload["Data"][0]["customerid"] == 1063
+
+
+def test_build_azure_payload_omits_customerid_when_unusable(settings, monkeypatch):
+    monkeypatch.setattr(settings, "override_customerid", None)
+    erp = _valid_erp("PO-7")
+    erp["customerid"] = "ABC"
+    records = [{"synthetic_id": 7, "po_number": "PO-7", "erp": erp}]
+    payload = build_azure_payload(records, settings)
+    assert "customerid" not in payload["Data"][0]

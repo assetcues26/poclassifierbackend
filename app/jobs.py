@@ -486,7 +486,7 @@ async def _process_job(job_id: str) -> None:
             _write_json(_records_path(job_id, settings), records)
             _write_json(_meta_path(job_id, settings), meta)
 
-        payload = build_azure_payload(batch)
+        payload = build_azure_payload(batch, settings)
         try:
             response = await classify_batch(payload, settings)
             by_id = _index_azure_pos(response)

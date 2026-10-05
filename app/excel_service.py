@@ -132,6 +132,37 @@ def apply_overrides(erp: dict[str, Any], settings: Settings) -> dict[str, Any]:
     return data
 
 
+def usable_customerid(value: Any) -> int | None:
+    """
+    Return a usable int customerid for Azure/Pinecone, or None.
+
+    Matches classifier rules: None / blank / 0 / non-numeric / bool → unusable.
+    Numeric strings like \"42\" parse to 42.
+    """
+    if value is None or isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value if value != 0 else None
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return None
+        try:
+            parsed = int(text)
+        except ValueError:
+            return None
+        return parsed if parsed != 0 else None
+    return None
+
+
+def resolve_customerid_for_po(erp: dict[str, Any], settings: Settings) -> int | None:
+    """Prefer usable ERP customerid; else env OVERRIDE_CUSTOMERID; else None (omit)."""
+    from_data = usable_customerid(erp.get("customerid"))
+    if from_data is not None:
+        return from_data
+    return usable_customerid(settings.override_customerid)
+
+
 def _first_bad_line(lines: list[Any]) -> str | None:
     for idx, line in enumerate(lines):
         if not isinstance(line, dict):
@@ -146,7 +177,10 @@ def _first_bad_line(lines: list[Any]) -> str | None:
     return None
 
 
-def build_azure_payload(records: list[dict[str, Any]]) -> dict[str, Any]:
+def build_azure_payload(
+    records: list[dict[str, Any]],
+    settings: Settings,
+) -> dict[str, Any]:
     """Build {Data: [...]} for a batch of valid pending/retry records."""
     data: list[dict[str, Any]] = []
     for rec in records:
@@ -162,12 +196,14 @@ def build_azure_payload(records: list[dict[str, Any]]) -> dict[str, Any]:
                 }
             )
         po_string = rec["po_number"] or erp.get("purchaseordernumber") or ""
-        data.append(
-            {
-                "purchaseorderid": int(rec["synthetic_id"]),
-                "purchaseordernumber": str(po_string),
-                "vendorname": erp.get("vendorname"),
-                "lines": lines_out,
-            }
-        )
+        po_obj: dict[str, Any] = {
+            "purchaseorderid": int(rec["synthetic_id"]),
+            "purchaseordernumber": str(po_string),
+            "vendorname": erp.get("vendorname"),
+            "lines": lines_out,
+        }
+        customerid = resolve_customerid_for_po(erp, settings)
+        if customerid is not None:
+            po_obj["customerid"] = customerid
+        data.append(po_obj)
     return {"Data": data}

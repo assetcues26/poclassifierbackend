@@ -32,6 +32,8 @@ class Settings(BaseSettings):
     override_locationcode: str = "2701163"
     override_companyname: str = "Myntra Designs Private Limited"
     override_companycode: str = "502"
+    # Fallback for Azure/Pinecone when ERP JSON has no usable customerid (omit if unset).
+    override_customerid: int | None = None
 
     jobs_dir: str = "jobs"
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
